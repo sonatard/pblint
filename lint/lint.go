@@ -38,13 +38,13 @@ func Lint(files []*desc.FileDescriptor) []error {
 					errs = append(errs, err)
 					continue
 				}
-				if err := httpMethod(httpRule); err != nil {
+				if err := httpMethod(method, httpRule); err != nil {
 					errs = append(errs, err)
 				}
-				if err := httpBody(httpRule); err != nil {
+				if err := httpBody(method, httpRule); err != nil {
 					errs = append(errs, err)
 				}
-				if err := httpAdditionalBinding(httpRule); err != nil {
+				if err := httpAdditionalBinding(method, httpRule); err != nil {
 					errs = append(errs, err)
 				}
 				if err := httpURL(service, method, httpRule); err != nil {
@@ -75,6 +75,30 @@ func fileName(file *desc.FileDescriptor, service *desc.ServiceDescriptor) error 
 	return nil
 }
 
+func requestTypeName(method *desc.MethodDescriptor) error {
+	methodName := method.GetName()
+
+	wantRequestName := methodName + "Request"
+	gotRequestName := method.GetInputType().GetName()
+	if gotRequestName != wantRequestName {
+		return fmt.Errorf("error: RequestName want=%v, got=%v", wantRequestName, gotRequestName)
+	}
+
+	return nil
+}
+
+func responseTypeName(method *desc.MethodDescriptor) error {
+	methodName := method.GetName()
+
+	wantResponseName := methodName + "Response"
+	gotResponseName := method.GetOutputType().GetName()
+	if gotResponseName != wantResponseName {
+		return fmt.Errorf("error: ResponseName want=%v, got=%v", wantResponseName, gotResponseName)
+	}
+
+	return nil
+}
+
 func requestTypeInFile(file *desc.FileDescriptor, method *desc.MethodDescriptor) error {
 	wantFileName := file.GetName()
 	gotFileName := method.GetInputType().GetFile().GetName()
@@ -99,29 +123,29 @@ func httpRule(method *desc.MethodDescriptor) (*annotations.HttpRule, error) {
 	opts := method.GetOptions()
 
 	if !proto.HasExtension(opts, annotations.E_Http) {
-		return nil, fmt.Errorf("error: HTTP Rule not found")
+		return nil, fmt.Errorf("error: %v HTTP Rule not found", method.GetName())
 	}
 
 	ext, err := proto.GetExtension(opts, annotations.E_Http)
 	if err != nil {
-		return nil, fmt.Errorf("error: HTTP Rule not found")
+		return nil, fmt.Errorf("error: %v HTTP Rule not found", method.GetName())
 	}
 
 	rule, ok := ext.(*annotations.HttpRule)
 	if !ok {
-		return nil, fmt.Errorf("error: HTTP Rule not found")
+		return nil, fmt.Errorf("error: %v HTTP Rule not found", method.GetName())
 	}
 
 	return rule, nil
 }
 
-func httpMethod(httpRule *annotations.HttpRule) error {
+func httpMethod(method *desc.MethodDescriptor, httpRule *annotations.HttpRule) error {
 	switch httpRule.GetPattern().(type) {
 	case *annotations.HttpRule_Get, *annotations.HttpRule_Post:
 		return nil
 	}
 
-	return fmt.Errorf("error: HTTP Rule HTTP method must use GET or POST")
+	return fmt.Errorf("error: %v HTTP Rule HTTP method must use GET or POST", method.GetName())
 }
 
 func httpURL(service *desc.ServiceDescriptor, method *desc.MethodDescriptor, httpRule *annotations.HttpRule) error {
@@ -142,42 +166,21 @@ func httpURL(service *desc.ServiceDescriptor, method *desc.MethodDescriptor, htt
 	return nil
 }
 
-func httpBody(httpRule *annotations.HttpRule) error {
-	body := httpRule.GetBody()
-	if body != "*" {
-		return fmt.Errorf("error: HTTP Rule Body is not *. got=%v", body)
+func httpBody(method *desc.MethodDescriptor, httpRule *annotations.HttpRule) error {
+	switch httpRule.GetPattern().(type) {
+	case *annotations.HttpRule_Post:
+		body := httpRule.GetBody()
+		if body != "*" {
+			return fmt.Errorf("error: %v HTTP Rule Body is not *. got=%v", body, method.GetName())
+		}
 	}
 
 	return nil
 }
 
-func httpAdditionalBinding(httpRule *annotations.HttpRule) error {
+func httpAdditionalBinding(method *desc.MethodDescriptor, httpRule *annotations.HttpRule) error {
 	if len(httpRule.GetAdditionalBindings()) != 0 {
-		return fmt.Errorf("error: HTTP Rule must not use AdditionalBindingsis")
-	}
-
-	return nil
-}
-
-func requestTypeName(method *desc.MethodDescriptor) error {
-	methodName := method.GetName()
-
-	wantRequestName := methodName + "Request"
-	gotRequestName := method.GetInputType().GetName()
-	if gotRequestName != wantRequestName {
-		return fmt.Errorf("error: RequestName want=%v, got=%v", wantRequestName, gotRequestName)
-	}
-
-	return nil
-}
-
-func responseTypeName(method *desc.MethodDescriptor) error {
-	methodName := method.GetName()
-
-	wantResponseName := methodName + "Response"
-	gotResponseName := method.GetOutputType().GetName()
-	if gotResponseName != wantResponseName {
-		return fmt.Errorf("error: ResponseName want=%v, got=%v", wantResponseName, gotResponseName)
+		return fmt.Errorf("error: %v HTTP Rule must not use AdditionalBindingsis", method.GetName())
 	}
 
 	return nil
