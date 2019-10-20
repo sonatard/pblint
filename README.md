@@ -22,9 +22,10 @@ pblint -i proto/ api/v1/*.proto
 1. Request type name must be `MethodNameRequest`.
 1. Response type name must be `MethodNameResponse`.
 1. HTTP rule must set.
-1. HTTP Method use GET or POST.
+1. HTTP method use GET or POST.
 1. HTTP URL must use `/ServiceName/MethodName`.
-1. HTTP Body must be `*`.
-1. HTTP Body must not use AdditionalBindings.
+1. HTTP POST method body must be `*`.
+1. HTTP GET method body must not set.
+1. HTTP body must not use AdditionalBindings.
 1. Other Message must not be in `servicename_service.proto`.
 

@@ -168,10 +168,15 @@ func httpURL(service *desc.ServiceDescriptor, method *desc.MethodDescriptor, htt
 
 func httpBody(method *desc.MethodDescriptor, httpRule *annotations.HttpRule) error {
 	switch httpRule.GetPattern().(type) {
+	case *annotations.HttpRule_Get:
+		body := httpRule.GetBody()
+		if body != "" {
+			return fmt.Errorf("error: %v HTTP Rule Body must not set. got=%v", body, method.GetName())
+		}
 	case *annotations.HttpRule_Post:
 		body := httpRule.GetBody()
 		if body != "*" {
-			return fmt.Errorf("error: %v HTTP Rule Body is not *. got=%v", body, method.GetName())
+			return fmt.Errorf("error: %v HTTP Rule Body must be *. got=%v", body, method.GetName())
 		}
 	}
 
